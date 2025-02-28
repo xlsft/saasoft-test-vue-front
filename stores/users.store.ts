@@ -15,11 +15,11 @@ export const useUsersStore = defineStore('users', () => {
             users.value.push(user); return user
         },
         get: (index: number): User => {
-            if (!users.value[index]) throw new UserError('User not found')
+            if (!users.value[index]) throw new UserError(`User with ${index} index not found`)
             return users.value[index]
         },
         update(index: number, user: Partial<User>): User {
-            if (!users.value[index]) throw new UserError('User not found')
+            if (!users.value[index]) throw new UserError(`User with ${index} index not found`)
             return users.value[index] = { ...users.value[index], ...user }
         }
     }
