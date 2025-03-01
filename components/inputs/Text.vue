@@ -14,6 +14,7 @@
         checker?: boolean
         invalid?: boolean
         invalidText?: any
+        invalidEmpty?: boolean
         clear?: boolean
         class?: string
         style?: any
@@ -105,17 +106,20 @@
             if (!props.check) return
             valid.value = false
             const result = await props.check(value.value || '')
-            state.value.invalid = value.value ? !result : false
+            state.value.invalid = value.value ? !result : props.invalidEmpty ? true : false
             valid.value = result
         },
-        model: () => {
+        model: async () => {
             if (value.value === '') model.value = props.clear ? undefined : '';
             else model.value = props.mask ? unmask(value.value || '', props.mask) : value.value;
+            await update.check()
+            emit('input', model.value, valid.value)
         },
         value: async () => {
             if (model.value === undefined || model.value === null) value.value = '';
             else value.value = props.mask ? mask((model.value || '').toString(), props.mask) : model.value
             await update.check()
+            emit('input', model.value, valid.value)
         },
         mouse: (e: MouseEvent) => {
             state.value.pos.mouse = { x: e.pageX, y: e.pageY };
@@ -148,6 +152,7 @@
     const interval = ref()
     onMounted(() => {
         interval.value = setInterval(() => update.state(), 200)
+        update.check()
         update.value();
         update.state();
 
@@ -194,14 +199,14 @@
     
     <div
         ref="container"
-        class="transition-all group/input relative"
+        class="transition-all group/input relative w-full"
         :class="`${props.class} ${title ? 'mt-[16px]' : ''} ${disabled ? 'disabled' : ''}`"
         :style="{ ...style }"
         @click="() => { state.dropdown = !state.dropdown }"
         @mouseenter="delay.clear()"
         @mouseleave="delay.use(() => { if (props.blur) { state.dropdown = false; input?.blur(); } })"
     >
-        <span v-if="title" class="text-[12px] break-keep whitespace-nowrap absolute top-[-20px]" :style="labelStyle" :class="`${invalid ? 'text-red-500' : `text-gray-500`} ${labelClass}`">
+        <span v-if="title" class="text-[12px] break-keep whitespace-nowrap absolute top-[-20px]" :style="labelStyle" :class="`${invalid ? 'text-red-500' : `text-white/50`} ${labelClass}`">
             {{ title }} <span v-if="required" class="text-red-500 text-[12px]">*</span>
         </span>
         <div
@@ -218,21 +223,22 @@
                 @mouseenter="state.hover = true"
                 @mouseleave="state.hover = false"
                 @select="(e) => state.readonly ? (e.target! as HTMLInputElement).selectionStart = (e.target! as HTMLInputElement).selectionEnd : null"
-                class="transition-all font-[400] outline-none disabled:opacity-50 disabled:grayscale disabled:bg-white placeholder:text-[14px] text-[14px] bg-white disabled:cursor-not-allowed text-gray-800 rounded-lg px-3 py-2 disabled:text-gray-500 placeholder-text-gray-500 w-full h-full border border-gray-200 hover:border-indigo-500"
-                :class="`${state.readonly ? 'text-transparent selection:text-transparent selection:bg-white' : ''} ${state.invalid === true ? 'placeholder:text-red-500 hover:border-red-500 border-red-500 ring-red-500 text-red-500 bg-red-100' : `${valid && props.checker ? 'placeholder:text-green-500/50 hover:placeholder:text-green-500 focus:placeholder:green-indigo-500 focus:border-green-500  border-green-500 hover:border-green-500' : 'placeholder:text-gray-500 hover:placeholder:text-indigo-500 focus:placeholder:text-indigo-500 focus:border-indigo-500'}`} ${props.inputClass}`"
+                class="transition-all font-[400] outline-none disabled:opacity-50 disabled:grayscale disabled:bg-gray-950 placeholder:text-[14px] text-[14px] bg-gray-950 disabled:cursor-not-allowed text-white rounded-lg px-3 py-2 disabled:text-white/50 placeholder-text-white/50 w-full h-full border border-gray-800 hover:border-blue-500"
+                :class="`${state.readonly ? 'text-transparent selection:text-transparent selection:bg-gray-950' : ''} ${state.invalid && !state.focus ? 'placeholder:text-red-500 hover:border-red-500 border-red-500 ring-red-500 text-red-500 bg-red-500/50' : `${valid && props.checker ? 'placeholder:text-green-500/50 hover:placeholder:text-green-500 focus:placeholder:green-blue-500 focus:border-green-500  border-green-500 hover:border-green-500' : 'placeholder:text-white/50 hover:placeholder:text-blue-500 focus:placeholder:text-blue-500 focus:border-blue-500'}`} ${props.inputClass}`"
                 :style="props.inputStyle"
                 :readonly="state.readonly"
                 :placeholder
                 :maxlength="props.mask ? props.mask?.length : max"
                 :minlength="min"
                 @keyup.enter="emit('enter', model)"
-                @input="emit('input', masked)"
+                @focus="state.focus = true"
+                @blur="state.focus = false"
             >
             <component
                 v-if="props.icon"
                 :is="props.icon"
                 class="w-[18px] absolute top-1/2 right-[12px] translate-y-[-50%] cursor-pointer stroke-[1.5px] pointer-events-auto z-1000 transition-all"
-                :class="`${invalid ? 'stroke-red-500 group-hover/input:stroke-red-500 hover:opacity-50' : `${valid && props.checker ? 'stroke-green-500/50 hover:stroke-green-500 group-hover/input:stroke-green-500' : 'stroke-gray-500 hover:stroke-indigo-500 group-hover/input:stroke-indigo-500'}`} ${props.iconClass}`"
+                :class="`${invalid ? 'stroke-red-500 group-hover/input:stroke-red-500 hover:opacity-50' : `${valid && props.checker ? 'stroke-green-500/50 hover:stroke-green-500 group-hover/input:stroke-green-500' : 'stroke-white/50 hover:stroke-blue-500 group-hover/input:stroke-blue-500'}`} ${props.iconClass}`"
                 :style="props.iconStyle"
                 @click="emit('action', model)"
             />
@@ -240,7 +246,7 @@
                 v-if="props.password"
                 :is="!state.visible ? IconVisible : IconHidden"
                 class="w-[18px] absolute top-1/2  translate-y-[-50%] cursor-pointer stroke-[1.5px] pointer-events-auto z-1000 transition-all"
-                :class="`${props.icon ? 'right-[42px]' : 'right-[12px]'} ${invalid ? 'stroke-red-500 group-hover/input:stroke-red-500 hover:opacity-50' : `${valid && props.checker ? 'stroke-green-500/50 hover:stroke-green-500 group-hover/input:stroke-green-500' : 'stroke-gray-500 hover:stroke-indigo-500 group-hover/input:stroke-indigo-500'}`} ${props.iconClass}`"
+                :class="`${props.icon ? 'right-[42px]' : 'right-[12px]'} ${invalid ? 'stroke-red-500 group-hover/input:stroke-red-500 hover:opacity-50' : `${valid && props.checker ? 'stroke-green-500/50 hover:stroke-green-500 group-hover/input:stroke-green-500' : 'stroke-white/50 hover:stroke-blue-500 group-hover/input:stroke-blue-500'}`} ${props.iconClass}`"
                 :style="props.iconStyle"
                 @click="state.visible = !state.visible"
             />
@@ -254,13 +260,13 @@
         </div>
     </div>
     <Teleport to="body">
-        <span v-if="state.invalidText" class="px-[8px] py-[2px] absolute bg-red-100 border border-red-500 rounded-md z-[99999999999999] text-[10px] text-red-500 pointer-events-none transition-all" :class="`${state.hover && state.invalid ? 'opacity-100' : 'opacity-0'}`" :style="`top: ${state.pos.dropdown.y}px; left: ${state.pos.dropdown.x}px; max-width: ${state.pos.dropdown.w}px; min-width: ${state.pos.dropdown.w}px`" v-html="state.invalidText"></span>
+        <span v-if="state.invalidText" class="px-[8px] py-[2px] absolute bg-red-500/50 border border-red-500 rounded-md z-[99999999999999] text-[10px] pointer-events-none transition-all" :class="`${state.hover && state.invalid && !state.focus ? 'opacity-100' : 'opacity-0'}`" :style="`top: ${state.pos.dropdown.y}px; left: ${state.pos.dropdown.x}px; max-width: ${state.pos.dropdown.w}px; min-width: ${state.pos.dropdown.w}px`" v-html="state.invalidText"></span>
         <div
             v-if="slots.dropdown"
             @mouseenter="delay.clear()"
             @mouseleave="delay.use(() => { state.dropdown = false; input?.blur(); })"
             ref="dropdown"
-            :class="`${state.dropdown ? 'opacity-100 *:pointer-events-auto translate-y-[0px] blur-0' : 'opacity-0 pointer-events-none translate-y-[25px] blur-md'} transition-all duration-300 absolute bg-white z-[99999999999] rounded-lg border max-h-[300px] overflow-y-scroll shadow-lg scrollbar-hide ${props.dropdownClass}`"
+            :class="`${state.dropdown ? 'opacity-100 *:pointer-events-auto translate-y-[0px] blur-0' : 'opacity-0 pointer-events-none translate-y-[25px] blur-md'} transition-all duration-300 absolute bg-gray-950 z-[99999999999] rounded-lg border border-gray-800 max-h-[300px] overflow-y-scroll shadow-lg scrollbar-hide ${props.dropdownClass}`"
             :style="`left: ${state.pos.dropdown.x}px; top: ${state.pos.dropdown.y}px; width: ${state.pos.input.w}px; ${props.dropdownStyle}`"
         >
             <slot name="dropdown"></slot>
