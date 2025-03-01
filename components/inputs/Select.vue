@@ -9,7 +9,8 @@
     const emit = defineEmits<{ 
         'item-click': [option: typeof props.options[number], i: string], 
         'item-dblclick': [option: typeof props.options[number], i: string], 
-        'input': [value: typeof model.value] 
+        'input': [value: typeof model.value],
+        'state': [data: typeof state.value]
     }>()
 
     const props = withDefaults(defineProps<{
@@ -45,7 +46,7 @@
 </script>
 
 <template>
-    <Text :style readonly blur :invalid :checker v-model:valid="valid_model" :title placeholder="" :required :disabled :icon :clear input-style="cursor: pointer !important;" @state="data => state = data">
+    <Text :style readonly blur :invalid :checker v-model:valid="valid_model" :title placeholder="" :required :disabled :icon :clear input-style="cursor: pointer !important;" @state="(data) => { state = data; emit('state', state) }">
         <template #dropdown>
             <div class="w-full h-full flex flex-col gap-[4px] p-[8px] scrollbar-default" v-if="!$slots.dropdown">
                 <button class="group select-tab-button" v-for="option, i in options" :data-selected="model === option[value] && model !== undefined && option[value] !== undefined" @dblclick="async () => { emit('item-dblclick', option, i) }" @click="async () => { emit('item-click', option, i); model = option[value]; props.check ? valid = valid_model = await props.check(option[value]) : null; props.hide ? state.dropdown = false : null }"  v-if="options && options.length > 0">

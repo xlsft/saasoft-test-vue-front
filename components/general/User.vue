@@ -8,13 +8,15 @@
     const props = defineProps<{ user: Partial<User> }>()
     const emits = defineEmits<{ save: [id: User['id']], delete: [id: User['id']] }>()
     const flags = ref()
-    const valid = ref([])
+    const valid = ref<boolean[]>([])
+    const focus = ref<boolean[]>([])
     const current = ref<Partial<User>>(props.user || {})
     const update = () => {
         if (!current.value) return
+        if (focus.value.filter(v => v).some(v => v)) return
         if (current.value.flags) flags.value = current.value.flags.map(flag => flag.text).join(';')
         valid.value.filter(v => v).every(v => v) && emits('save', current.value.id!)
-    }; watch(() => [current.value.flags, current.value.type, current.value.login, current.value.password], update, { deep: true }); update()
+    }; watch(() => [current.value.flags, current.value.type, current.value.login, current.value.password, flags.value, focus.value], update, { deep: true }); update()
     const split = (value: string, valid: boolean) => {
         if (!valid) return
         if (!value) { current.value.flags = undefined; return }
@@ -25,6 +27,7 @@
 </script>
 <template>
     <Text 
+        @state="(data) => focus[0] = data.focus"
         class="col-span-3"
         @input="split" 
         v-model="flags"
@@ -36,6 +39,7 @@
         invalid-text="Метки - заглавные латинские буквы разделенные <strong>точкой с запятой</strong> длинной от 0 до 50 символов<br>Например: <i>'AAA;BBB;CCC'</i> или <i>'AAA'</i>"
     />
     <Select 
+        @state="(data) => focus[1] = (data as any).focus"
         class="col-span-2"
         :options="[
             { label: 'LDAP', value: 'ldap' },
@@ -45,6 +49,7 @@
         v-model="current.type"
     />
     <Text
+        @state="(data) => focus[2] = data.focus"
         :class="`${current.type === 'local' ? 'col-span-2' : 'col-span-4'}`"
         v-model:valid="valid[2]"
         placeholder="Логин"
@@ -56,6 +61,7 @@
         :max="100"
     />
     <Text
+        @state="(data) => focus[3] = data.focus"
         class="col-span-2"
         v-if="current.type === 'local'"
         v-model:valid="valid[3]"

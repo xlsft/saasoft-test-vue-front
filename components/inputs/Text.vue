@@ -54,6 +54,8 @@
     const dropdown = ref<HTMLElement | null>(null);
     const container = ref<HTMLElement | null>(null);
     const id = useUUID()
+    ;
+
     const state = ref({
         dropdown: false,
         readonly: false,
